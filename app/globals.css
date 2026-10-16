@@ -113,6 +113,8 @@ h1 {
   font-size: 13px;
   white-space: nowrap;
 }
+.quest button { display:grid; place-items:center; padding:0; border:0; background:transparent; color:#f2cc64; cursor:pointer; }
+.quest button svg { width:17px; height:17px; }
 .quest b {
   color: #f2cc64;
 }
@@ -141,6 +143,13 @@ h1 {
   box-shadow: 0 3px 12px #0009;
   font-size: 14px;
 }
+.actionFeedback {
+  position:fixed; z-index:5; left:50%; top:42%; transform:translate(-50%,-50%);
+  padding:12px 20px; border:2px solid #ffe184; background:#182216ee; color:#ffe184;
+  box-shadow:0 0 32px #ffd75a88; font-weight:900; letter-spacing:.1em; pointer-events:none;
+  animation:feedbackPop 1.8s ease both;
+}
+@keyframes feedbackPop { 0%{opacity:0;transform:translate(-50%,-35%) scale(.8)} 16%,70%{opacity:1;transform:translate(-50%,-50%) scale(1)} 100%{opacity:0;transform:translate(-50%,-65%) scale(.95)} }
 .desktopHints {
   position: fixed;
   z-index: 3;
@@ -302,6 +311,7 @@ h1 {
   text-align: center;
   width: min(650px, 100%);
 }
+.titleArtwork { width:100%; aspect-ratio:1200/630; object-fit:cover; margin:-30px -30px 22px; width:calc(100% + 60px); border-bottom:2px solid #d6b54f; display:block; }
 .guide > small {
   color: #edc75f;
   letter-spacing: 0.15em;
@@ -394,6 +404,18 @@ h1 {
   border: 3px solid #758060;
   box-shadow: 0 22px 75px #000;
 }
+.journalPanel { position:relative; width:min(620px,100%); max-height:90vh; overflow:auto; padding:28px; background:radial-gradient(circle at top,#2d3928,#111710 67%); border:3px solid #758060; box-shadow:0 22px 75px #000; }
+.journalPanel > small { color:#edc75f; letter-spacing:.16em; font-weight:900; }
+.journalPanel h2 { margin:7px 0 18px; color:#f7d66f; font:700 34px Georgia,serif; }
+.journalPanel h3 { color:#e8c75f; margin:22px 0 9px; }
+.missionList { display:grid; gap:7px; }
+.missionList > div { display:flex; gap:12px; align-items:center; padding:11px; border:1px solid #485340; background:#11170f; opacity:.55; }
+.missionList > div.active { opacity:1; border-color:#e0bb51; box-shadow:inset 4px 0 #e0bb51; }
+.missionList > div.done { opacity:.8; border-color:#56764e; }
+.missionList > div > b { display:grid; place-items:center; flex:0 0 30px; height:30px; border-radius:50%; background:#293323; color:#f4d36a; }
+.missionList span,.missionList small { display:block; }.missionList small { color:#bdc6b5; margin-top:3px; }
+.discoveryGrid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+.discoveryGrid span { padding:10px; background:#0d120c; border:1px dashed #485340; color:#8e9688; }.discoveryGrid .found { border-style:solid; border-color:#bd9e47; color:#f0dc9a; }
 .gameMenu h2 { margin: 0 0 18px; color: #f7d66f; font: 700 30px Georgia, serif; }
 .modeChoice,
 .menuGrid button {
@@ -446,6 +468,8 @@ h1 {
   grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
+.craftPreview { display:flex; align-items:center; gap:11px; margin:-10px 0 16px; padding:11px; border:1px solid #46523f; background:#0c110c; color:#929a8d; }
+.craftPreview.ready { border-color:#c7a749; color:#f3d673; }.craftPreview svg { width:24px; }.craftPreview span,.craftPreview small { display:block; }.craftPreview small { margin-top:3px; color:#bfc7b6; }
 .recipeGrid button {
   display: flex;
   justify-content: space-between;
@@ -560,12 +584,12 @@ h1 {
     position: fixed;
     z-index: 4;
     left: 14px;
-    bottom: 94px;
+    bottom: max(92px, calc(env(safe-area-inset-bottom) + 78px));
     text-align: center;
   }
   .mobileMove button {
-    width: 52px;
-    height: 47px;
+    width: 58px;
+    height: 52px;
     margin: 1px;
     border: 2px solid #879277;
     background: #111711bb;
@@ -577,8 +601,8 @@ h1 {
     position: fixed;
     z-index: 4;
     right: 13px;
-    bottom: 96px;
-    grid-template-columns: repeat(2, 76px);
+    bottom: max(94px, calc(env(safe-area-inset-bottom) + 80px));
+    grid-template-columns: repeat(2, 78px);
     gap: 4px;
   }
   .mobileActions button {
@@ -586,8 +610,8 @@ h1 {
     align-items: center;
     justify-content: center;
     gap: 4px;
-    width: 76px;
-    height: 34px;
+    width: 78px;
+    height: 44px;
     border: 2px solid #8f987b;
     background: #111711d9;
     color: #fff;
@@ -599,7 +623,7 @@ h1 {
   .voxelBar {
     left: 8px;
     right: 8px;
-    bottom: 8px;
+    bottom: max(8px, env(safe-area-inset-bottom));
     transform: none;
     display: flex;
     overflow-x: auto;
@@ -613,6 +637,7 @@ h1 {
   .backpackPanel {
     padding: 22px;
   }
+  .titleArtwork { margin:-22px -22px 18px; width:calc(100% + 44px); }
   .guide h2,
   .craftPanel h2 {
     font-size: 28px;
@@ -640,8 +665,9 @@ h1 {
   .logo h1 { font-size: 15px; }
   .meters button { padding: 0 8px; }
   .quest b {
-    display: none;
+    max-width:55%; overflow:hidden; text-overflow:ellipsis;
   }
+  .quest span { font-size:0; }.quest span::after { content:"Tap map for mission"; font-size:10px; }
   .notice {
     left: 50%;
     top: 86px;
@@ -650,15 +676,15 @@ h1 {
     min-height: 0;
   }
   .mobileMove {
-    bottom: 79px;
+    bottom: max(77px, calc(env(safe-area-inset-bottom) + 66px));
   }
   .mobileActions {
-    bottom: 81px;
-    grid-template-columns: repeat(2, 68px);
+    bottom: max(79px, calc(env(safe-area-inset-bottom) + 68px));
+    grid-template-columns: repeat(2, 70px);
   }
   .mobileActions button {
-    width: 68px;
-    height: 38px;
+    width: 70px;
+    height: 42px;
   }
   .voxelBar button { flex-basis: 56px; height: 58px; }
   .voxelBar small { display: none; }
@@ -669,9 +695,19 @@ h1 {
   .guideCards {
     display: none;
   }
+  .journalPanel { padding:22px 17px; }.journalPanel h2{font-size:28px}.discoveryGrid{grid-template-columns:1fr}
   .guide blockquote {
     font-size: 15px;
   }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .gameTop { top:5px; }.quest { top:45px; width:auto; max-width:66%; }.notice { top:78px; max-width:50%; }
+  .mobileMove { left:max(12px,env(safe-area-inset-left)); bottom:max(72px,env(safe-area-inset-bottom)); }
+  .mobileMove button { width:54px; height:44px; }
+  .mobileActions { right:max(12px,env(safe-area-inset-right)); bottom:max(72px,env(safe-area-inset-bottom)); grid-template-columns:repeat(2,72px); }
+  .mobileActions button { width:72px; height:38px; }
+  .voxelBar { left:50%; right:auto; transform:translateX(-50%); max-width:58vw; }
+  .guide,.craftPanel,.backpackPanel,.journalPanel{max-height:96vh}
 }
 .gfxError {
   position: fixed;

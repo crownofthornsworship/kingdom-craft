@@ -19,6 +19,7 @@ import {
   Sun,
   Sword,
   Trophy,
+  MapPinned,
   X,
 } from "lucide-react";
 type Block =
@@ -78,6 +79,19 @@ const start = (): Inv => ({
   sword: 0,
 });
 const SAVE_KEY = "kingdom-craft-survival-v1";
+const landmarks = [
+  { id: "well", name: "Well of Living Water", x: -13, z: -8, reward: "stone" as Item },
+  { id: "garden", name: "Garden of Promise", x: 13, z: -11, reward: "wood" as Item },
+  { id: "grotto", name: "Crystal Grotto", x: -12, z: 12, reward: "coal" as Item },
+  { id: "watch", name: "Watchtower of Dawn", x: 14, z: 13, reward: "torch" as Item },
+];
+const missions = [
+  { title: "Gather the First Stones", detail: "Collect 4 wood and 3 stone", done: (v: { inv: Inv }) => v.inv.wood >= 4 && v.inv.stone >= 3 },
+  { title: "A Place of Making", detail: "Craft a table and place 5 blocks", done: (v: { tableMade: boolean; placed: number }) => v.tableMade && v.placed >= 5 },
+  { title: "Seek What Was Hidden", detail: "Discover 2 landmarks", done: (v: { discovered: string[] }) => v.discovered.length >= 2 },
+  { title: "Carry the Light", detail: "Restore 2 afflicted people and defeat a shadow", done: (v: { rescued: number; shadowsDefeated: number }) => v.rescued >= 2 && v.shadowsDefeated >= 1 },
+  { title: "Light of the World", detail: "Reach 14 Light and discover all 4 landmarks", done: (v: { light: number; discovered: string[] }) => v.light >= 14 && v.discovered.length >= 4 },
+];
 const recipes: { a: Item; b: Item; out: Item; n: number; table?: boolean }[] = [
   { a: "wood", b: "wood", out: "plank", n: 4 },
   { a: "plank", b: "plank", out: "table", n: 1 },
@@ -166,12 +180,20 @@ export default function Home() {
     [fp, setFp] = useState(false),
     [gfxError, setGfxError] = useState(false),
     [tableMade, setTableMade] = useState(false),
+    [placed, setPlaced] = useState(0),
+    [discovered, setDiscovered] = useState<string[]>([]),
+    [missionStep, setMissionStep] = useState(0),
+    [journal, setJournal] = useState(false),
+    [feedback, setFeedback] = useState(""),
     [hydrated, setHydrated] = useState(false),
     [victory, setVictory] = useState(false);
-  const invRef = useRef(inv);
+  const invRef = useRef(inv), discoveredRef = useRef(discovered);
   useEffect(() => {
     invRef.current = inv;
   }, [inv]);
+  useEffect(() => {
+    discoveredRef.current = discovered;
+  }, [discovered]);
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(SAVE_KEY) || "null");
@@ -181,16 +203,32 @@ export default function Home() {
       if (Number.isFinite(saved?.rescued)) setRescued(saved.rescued);
       if (Number.isFinite(saved?.shadowsDefeated)) setShadowsDefeated(saved.shadowsDefeated);
       if (typeof saved?.tableMade === "boolean") setTableMade(saved.tableMade);
+      if (Number.isFinite(saved?.placed)) setPlaced(saved.placed);
+      if (Array.isArray(saved?.discovered)) setDiscovered(saved.discovered);
+      if (Number.isFinite(saved?.missionStep)) setMissionStep(Math.max(0, Math.min(missions.length - 1, saved.missionStep)));
     } catch {}
     setHydrated(true);
   }, []);
   useEffect(() => {
     if (!hydrated) return;
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ inv, health, light, rescued, shadowsDefeated, tableMade }));
-  }, [hydrated, inv, health, light, rescued, shadowsDefeated, tableMade]);
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ inv, health, light, rescued, shadowsDefeated, tableMade, placed, discovered, missionStep }));
+  }, [hydrated, inv, health, light, rescued, shadowsDefeated, tableMade, placed, discovered, missionStep]);
   useEffect(() => {
-    if (rescued >= 2 && shadowsDefeated >= 1 && light >= 10) setVictory(true);
-  }, [rescued, shadowsDefeated, light]);
+    if (!hydrated || missionStep >= missions.length - 1) return;
+    const snapshot = { inv, tableMade, placed, discovered, rescued, shadowsDefeated, light };
+    if (missions[missionStep].done(snapshot as never)) {
+      setMissionStep((step) => Math.min(step + 1, missions.length - 1));
+      setFeedback("MISSION COMPLETE");
+    }
+  }, [hydrated, missionStep, inv, tableMade, placed, discovered, rescued, shadowsDefeated, light]);
+  useEffect(() => {
+    if (rescued >= 2 && shadowsDefeated >= 1 && light >= 14 && discovered.length >= 4) setVictory(true);
+  }, [rescued, shadowsDefeated, light, discovered]);
+  useEffect(() => {
+    if (!feedback) return;
+    const id = window.setTimeout(() => setFeedback(""), 1800);
+    return () => window.clearTimeout(id);
+  }, [feedback]);
   useEffect(() => {
     selRef.current = selected;
   }, [selected]);
@@ -279,12 +317,12 @@ export default function Home() {
       scene.remove(m);
       blocks.delete(K(m.userData.x, m.userData.y, m.userData.z));
     }
-    for (let x = -11; x <= 11; x++)
-      for (let z = -11; z <= 11; z++) {
+    for (let x = -18; x <= 18; x++)
+      for (let z = -18; z <= 18; z++) {
         const h = height(x, z);
         for (let y = -1; y <= h; y++)
           put(x, y, z, y === h ? "grass" : y < h - 1 ? "stone" : "dirt");
-        if ((x * 17 + z * 31) % 23 === 0 && Math.hypot(x, z) > 7) {
+        if ((x * 17 + z * 31) % 29 === 0 && Math.hypot(x, z) > 7) {
           for (let y = h + 1; y <= h + 3; y++) put(x, y, z, "wood");
           for (let dx = -1; dx <= 1; dx++)
             for (let dz = -1; dz <= 1; dz++)
@@ -299,6 +337,27 @@ export default function Home() {
       [8, 7],
       [-7, -6],
     ].forEach(([x, z]) => put(x, height(x, z) + 1, z, "coal"));
+    const landmarkMarkers: { id: string; name: string; reward: Item; group: THREE.Group }[] = [];
+    landmarks.forEach((spot, index) => {
+      const group = new THREE.Group();
+      const baseY = height(spot.x, spot.z) + 1;
+      const gold = new THREE.MeshLambertMaterial({ color: 0xe0b84f, emissive: 0x3d2a06 });
+      const pale = new THREE.MeshLambertMaterial({ color: 0xd9d2ad });
+      if (spot.id === "well") {
+        for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) if (Math.abs(dx) + Math.abs(dz) !== 2) put(spot.x + dx, baseY, spot.z + dz, "stone");
+      } else if (spot.id === "garden") {
+        for (let dx = -2; dx <= 2; dx++) put(spot.x + dx, baseY, spot.z, dx % 2 ? "leaves" : "wood");
+      } else if (spot.id === "grotto") {
+        for (let dx = -2; dx <= 2; dx++) put(spot.x + dx, baseY + Math.abs(dx), spot.z, dx ? "stone" : "coal");
+      } else {
+        for (let y = 0; y < 5; y++) put(spot.x, baseY + y, spot.z, y === 4 ? "torch" : "stone");
+      }
+      const beacon = new THREE.Mesh(new THREE.OctahedronGeometry(0.38), index % 2 ? gold : pale);
+      beacon.position.set(spot.x, baseY + 3.2, spot.z);
+      group.add(beacon);
+      scene.add(group);
+      landmarkMarkers.push({ ...spot, group });
+    });
     const player = new THREE.Group(),
       skin = new THREE.MeshLambertMaterial({ color: 0xc98c62 }),
       robe = new THREE.MeshLambertMaterial({ color: 0xd7c69b }),
@@ -402,6 +461,9 @@ export default function Home() {
       }
       put(p.x, p.y, p.z, item);
       if (!creativeRef.current) add(item, -1);
+      setPlaced((v) => v + 1);
+      setFeedback(`+1 BUILD · ${names[item]}`);
+      navigator.vibrate?.(25);
       setMessage(`Placed ${names[item].toLowerCase()}.`);
     };
     act.current.help = () => {
@@ -640,6 +702,16 @@ export default function Home() {
           }
         }
       });
+      landmarkMarkers.forEach((spot) => {
+        spot.group.rotation.y += dt * 0.8;
+        if (spot.group.userData.found || discoveredRef.current.includes(spot.id) || spot.group.children[0].position.distanceTo(player.position) > 4.2) return;
+        spot.group.userData.found = true;
+        setDiscovered((found) => found.includes(spot.id) ? found : [...found, spot.id]);
+        add(spot.reward, spot.reward === "torch" ? 2 : 3);
+        setLight((value) => value + 1);
+        setFeedback("LANDMARK DISCOVERED");
+        setMessage(`${spot.name} discovered! You found ${spot.reward === "torch" ? 2 : 3} ${names[spot.reward].toLowerCase()} and gained Light.`);
+      });
       renderer.render(scene, camera);
       raf = requestAnimationFrame(loop);
     }
@@ -689,6 +761,8 @@ export default function Home() {
     });
     if (r.out === "table") setTableMade(true);
     setSelected(r.out);
+    setFeedback(`CRAFTED · ${names[r.out]} ×${r.n}`);
+    navigator.vibrate?.([25, 30, 25]);
     setMessage(`Crafted ${r.n > 1 ? r.n + " " : ""}${names[r.out]}.`);
   }
   if (gfxError)
@@ -729,6 +803,10 @@ export default function Home() {
         {label}
       </button>
     );
+  const missionState = { inv, tableMade, placed, discovered, rescued, shadowsDefeated, light };
+  const missionIndex = missionStep;
+  const activeMission = missions[missionIndex];
+  const recipePreview = recipes.find((r) => (r.a === slotA && r.b === slotB) || (r.a === slotB && r.b === slotA));
   return (
     <main className="voxelGame">
       <div ref={mount} className="viewport" />
@@ -760,13 +838,13 @@ export default function Home() {
         </div>
       </header>
       <div className="quest">
-        <b>THE LIGHT SHINES IN THE DARKNESS</b>
-        <span>
-          {rescued}/2 restored · {shadowsDefeated}/1 shadow defeated · {light}/10 Light
-        </span>
+        <button onClick={() => setJournal(true)} aria-label="Open mission journal"><MapPinned /></button>
+        <b>MISSION {missionIndex + 1}/{missions.length} · {activeMission.title}</b>
+        <span>{activeMission.detail}</span>
       </div>
       <div className="crosshair">+</div>
       <div className="notice">{message}</div>
+      {feedback && <div className="actionFeedback">{feedback}</div>}
       <div className="desktopHints">
         <span>WASD Move</span>
         <span>Space Jump</span>
@@ -928,6 +1006,10 @@ export default function Home() {
               </select>
               <button onClick={make}>CRAFT</button>
             </div>
+            <div className={`craftPreview ${recipePreview ? "ready" : ""}`}>
+              <Sparkles />
+              <span>{recipePreview ? <><b>{names[recipePreview.out]} × {recipePreview.n}</b><small>{recipePreview.table ? (tableMade ? "Crafting table ready" : "Requires a crafting table") : "Ready when you have the materials"}</small></> : <><b>No known recipe</b><small>Choose a recipe below or try another combination.</small></>}</span>
+            </div>
             <div className="recipeGrid">
               {recipes.map((r) => (
                 <button
@@ -953,6 +1035,7 @@ export default function Home() {
       {guide && (
         <div className="panelShade">
           <section className="guide">
+            <img className="titleArtwork" src="./kingdom-craft-share.png" alt="Kingdom Craft: Light of the World" />
             <small>TRUE 3D VOXEL SURVIVAL · LIGHTBRINGER UPDATE</small>
             <h2>Bring light to a living world.</h2>
             <p>
@@ -989,6 +1072,22 @@ export default function Home() {
               <button onClick={() => { setCreative(false); setGuide(false); }}>Play survival</button>
               <button onClick={() => { setCreative(true); setGuide(false); }}><Feather /> Explore in creative</button>
             </div>
+          </section>
+        </div>
+      )}
+      {journal && (
+        <div className="panelShade" onClick={() => setJournal(false)}>
+          <section className="journalPanel" onClick={(e) => e.stopPropagation()}>
+            <button className="close" onClick={() => setJournal(false)}><X /></button>
+            <small>JOURNEY OF LIGHT</small>
+            <h2>Mission Journal</h2>
+            <div className="missionList">{missions.map((mission, index) => {
+              const done = mission.done(missionState as never);
+              const completed = index < missionStep || done;
+              return <div key={mission.title} className={completed ? "done" : index === missionIndex ? "active" : ""}><b>{completed ? "✓" : index + 1}</b><span><strong>{mission.title}</strong><small>{mission.detail}</small></span></div>;
+            })}</div>
+            <h3>Discoveries · {discovered.length}/4</h3>
+            <div className="discoveryGrid">{landmarks.map((spot) => <span key={spot.id} className={discovered.includes(spot.id) ? "found" : ""}>{discovered.includes(spot.id) ? "✦" : "?"} {discovered.includes(spot.id) ? spot.name : "Undiscovered place"}</span>)}</div>
           </section>
         </div>
       )}
